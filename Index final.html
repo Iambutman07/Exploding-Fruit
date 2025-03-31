@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Exploding Fruit</title>
+  <!-- Import Montserrat -->
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet" />
+  <style>
+    /* Global Styles */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Montserrat', sans-serif;
+    }
+    body {
+      background-color: #121212;
+      color: #e0e0e0;
+      min-height: 100vh;
+      overflow-x: hidden;
+      padding: 20px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    /* Increase container max-width for proper scale */
+    #game-container {
+      width: 100%;
+      max-width: 600px;
+      text-align: center;
+      position: relative;
+    }
+    /* Center screens */
+    .screen {
+      width: 100%;
+      min-height: 80vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      transition: opacity 0.3s ease-out;
+      position: relative;
+    }
+    .hidden { display: none; }
+    
+    h1 {
+      font-size: 2.5rem;
+      margin-bottom: 2rem;
+      color: #ffffff;
+      z-index: 1;
+    }
+    h2 {
+      font-size: 1.8rem;
+      margin-bottom: 1rem;
+      color: #ffffff;
+      z-index: 1;
+    }
+    button {
+      background-color: #10b981;
+      color: #ffffff;
+      width: 100%;
+      padding: 15px;
+      border: none;
+      border-radius: 8px;
+      font-size: 1.2rem;
+      font-weight: bold;
+      margin-bottom: 15px;
+      cursor: pointer;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.6);
+      transition: transform 0.2s, box-shadow 0.2s;
+      z-index: 1;
+    }
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 8px rgba(0,0,0,0.8);
+    }
+    button:active {
+      transform: translateY(1px);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.6);
+    }
+    #rules-button, #menu-button { background-color: #3b82f6; }
+    #back-button { background-color: #8b5cf6; }
+    #play-again-button { background-color: #10b981; }
+    
+    /* Rules Panel */
+    #rules-screen {
+      background-color: #1e1e1e;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 8px 15px rgba(0,0,0,0.8);
+      z-index: 1;
+    }
+    ul {
+      text-align: left;
+      margin: 20px 0;
+    }
+    li { margin-bottom: 10px; list-style-type: none; }
+    .red    { color: #ef4444; font-weight: bold; }
+    .blue   { color: #3b82f6; font-weight: bold; }
+    .green  { color: #10b981; font-weight: bold; }
+    .yellow { color: #f59e0b; font-weight: bold; }
+    .bomb   { font-weight: bold; }
+    
+    /* Stats Panel */
+    #stats {
+      display: flex;
+      justify-content: space-between;
+      width: 100%;
+      margin-bottom: 20px;
+      z-index: 1;
+    }
+    #score-display, #timer-display {
+      background-color: #333333;
+      padding: 8px 15px;
+      border-radius: 8px;
+      font-weight: bold;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.6);
+      z-index: 1;
+    }
+    
+    /* Card Stack */
+    #card-stack {
+      position: relative;
+      width: 260px;
+      height: 380px;
+      margin-bottom: 20px;
+      z-index: 1;
+    }
+    .stack-card {
+      position: absolute;
+      width: 260px;
+      height: 380px;
+      background-color: #1e1e1e;
+      border-radius: 16px;
+      top: 0;
+      left: 0;
+    }
+    #stack-card-1 { transform: translateY(6px) scale(0.97); z-index: 1; }
+    #stack-card-2 { transform: translateY(3px) scale(0.98); z-index: 2; }
+    
+    /* Main Cards */
+    .card {
+      position: absolute;
+      width: 260px;
+      height: 380px;
+      top: 0;
+      left: 0;
+      background-color: #ffffff;
+      border-radius: 16px;
+      border: 3px solid #ffffff;
+      box-shadow: 0 10px 15px rgba(0,0,0,0.8);
+      display: flex;
+      align-items: center;
+      justify-content: center;  /* Centers the content in the card */
+      transition: transform 0.25s ease-out, opacity 0.25s ease-out;
+      z-index: 3;
+    }
+    #next-card { z-index: 2; }
+    
+    /* Swipe Animations */
+    .card.swipe-left   { transform: translateX(-300px) rotate(-30deg); opacity: 0; }
+    .card.swipe-right  { transform: translateX(300px) rotate(30deg);  opacity: 0; }
+    .card.swipe-up     { transform: translateY(-300px) rotate(-10deg); opacity: 0; }
+    .card.swipe-down   { transform: translateY(300px) rotate(10deg);  opacity: 0; }
+    .card.wrong-swipe-left   { transform: translateX(-30px) rotate(-5deg); }
+    .card.wrong-swipe-right  { transform: translateX(30px) rotate(5deg); }
+    .card.wrong-swipe-up     { transform: translateY(-30px) rotate(-2deg); }
+    .card.wrong-swipe-down   { transform: translateY(30px) rotate(2deg); }
+    
+    /* Card Colors */
+    .card-red    { background-color: #a80000; }
+    .card-blue   { background-color: #0044a8; }
+    .card-green  { background-color: #007f00; }
+    .card-yellow { background-color: #a87f00; }
+    .card-bomb   { background-color: #555555; }
+    
+    /* INCREASED ARROW SIZE: Made arrows larger and ensured they're visible behind fruits */
+    .card-arrow {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      opacity: 0.5; /* Increased from 0.3 to make more visible */
+      pointer-events: none;
+      z-index: 0;
+      width: 240px; /* Increased from 160px */
+      height: 240px; /* Increased from 160px */
+    }
+
+    /* Adjusted positioning and sizes for arrow parts */
+    .arrow-up::before {
+      content: '';
+      position: absolute;
+      width: 30px; /* Increased from 20px */
+      height: 140px; /* Increased from 100px */
+      background: currentColor;
+      top: 80px; /* Adjusted positioning */
+      left: 105px; /* Adjusted positioning */
+    }
+    .arrow-up::after {
+      content: '';
+      position: absolute;
+      border-style: solid;
+      border-width: 0 45px 60px 45px; /* Increased from 0 30px 40px 30px */
+      border-color: transparent transparent currentColor transparent;
+      top: 20px;
+      left: 75px; /* Adjusted positioning */
+    }
+
+    .arrow-down::before {
+      content: '';
+      position: absolute;
+      width: 30px; /* Increased from 20px */
+      height: 140px; /* Increased from 100px */
+      background: currentColor;
+      top: 20px; /* Adjusted positioning */
+      left: 105px; /* Adjusted positioning */
+    }
+    .arrow-down::after {
+      content: '';
+      position: absolute;
+      border-style: solid;
+      border-width: 60px 45px 0 45px; /* Increased from 40px 30px 0 30px */
+      border-color: currentColor transparent transparent transparent;
+      top: 160px; /* Adjusted positioning */
+      left: 75px; /* Adjusted positioning */
+    }
+
+    .arrow-left::before {
+      content: '';
+      position: absolute;
+      width: 140px; /* Increased from 100px */
+      height: 30px; /* Increased from 20px */
+      background: currentColor;
+      top: 105px; /* Adjusted positioning */
+      left: 80px; /* Adjusted positioning */
+    }
+    .arrow-left::after {
+      content: '';
+      position: absolute;
+      border-style: solid;
+      border-width: 45px 60px 45px 0; /* Increased from 30px 40px 30px 0 */
+      border-color: transparent currentColor transparent transparent;
+      top: 75px; /* Adjusted positioning */
+      left: 20px;
+    }
+
+    .arrow-right::before {
+      content: '';
+      position: absolute;
+      width: 140px; /* Increased from 100px */
+      height: 30px; /* Increased from 20px */
+      background: currentColor;
+      top: 105px; /* Adjusted positioning */
+      left: 20px;
+    }
+    .arrow-right::after {
+      content: '';
+      position: absolute;
+      border-style: solid;
+      border-width: 45px 0 45px 60px; /* Increased from 30px 0 30px 40px */
+      border-color: transparent transparent transparent currentColor;
+      top: 75px; /* Adjusted positioning */
+      left: 160px; /* Adjusted positioning */
+    }
+    
+    /* Card Content: Fruit centered in the flex container */
+    .card-content {
+      position: relative;
+      font-size: 100px;
+      z-index: 1;
+      transition: transform 0.15s ease-in-out;
+    }
+    .card-content:hover {
+      transform: scale(1.15);
+    }
+    
+    /* Instruction Text */
+    #instruction {
+      font-size: 14px;
+      color: #e0e0e0;
+      margin-top: 15px;
+      z-index: 1;
+    }
+    
+    /* Game Over Screen */
+    #game-over-screen {
+      background-color: #1e1e1e;
+      padding: 25px;
+      border-radius: 10px;
+      width: 100%;
+      box-shadow: 0 8px 15px rgba(0,0,0,0.8);
+      z-index: 1;
+    }
+    #final-score, #high-score {
+      margin-bottom: 15px;
+      font-size: 1.2rem;
+      color: #ffffff;
+    }
+    
+    /* Full-screen Background Animation for MENU & GAME OVER */
+    .background-animation {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: -1;
+      display: flex;
+      pointer-events: none;
+    }
+    .fruit-column {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-around;
+      align-items: center;
+      font-size: 3rem;
+      opacity: 0.2;
+      animation: moveUp 4s linear infinite;
+    }
+    .fruit-column.even {
+      animation: moveDown 4s linear infinite;
+    }
+    @keyframes moveUp {
+      0% { transform: translateY(100%); }
+      100% { transform: translateY(-100%); }
+    }
+    @keyframes moveDown {
+      0% { transform: translateY(-100%); }
+      100% { transform: translateY(100%); }
+    }
+    
+    /* Tap Message */
+    #tap-message {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(0,0,0,0.8);
+      padding: 10px 20px;
+      border-radius: 8px;
+      color: #fff;
+      font-size: 1rem;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.5s ease;
+      z-index: 2;
+    }
+    #tap-message.show { opacity: 1; }
+  </style>
+</head>
+<body>
+  <!-- Background Animation for MENU & GAME OVER -->
+  <div class="background-animation" id="menu-bg">
+    <div class="fruit-column">🍎🍌🍇🍏🍓🍒🍉🥑</div>
+    <div class="fruit-column even">🍌🍎🍇🍏🍒🍓🍉🥑</div>
+    <div class="fruit-column">🍇🍏🍓🍒🍉🥑🍎🍌</div>
+    <div class="fruit-column even">🍏🍒🍓🍇🍎🍉🥑🍌</div>
+    <div class="fruit-column">🍉🥑🍌🍎🍓🍒🍏🍇</div>
+    <div class="fruit-column even">🍓🍒🍏🍇🍉🥑🍎🍌</div>
+  </div>
+  
+  <div id="game-container">
+    <!-- MENU SCREEN -->
+    <div id="menu-screen" class="screen">
+      <h1>Exploding Fruit</h1>
+      <button id="play-button">PLAY</button>
+      <button id="rules-button">HOW TO PLAY</button>
+    </div>
+    
+    <!-- RULES SCREEN -->
+    <div id="rules-screen" class="screen hidden">
+      <h2>How to Play</h2>
+      <ul>
+        <li><span class="red">Red fruits:</span> Swipe UP (▲)</li>
+        <li><span class="blue">Blue fruits:</span> Swipe DOWN (▼)</li>
+        <li><span class="green">Green fruits:</span> Swipe RIGHT (▶)</li>
+        <li><span class="yellow">Yellow fruits:</span> Swipe LEFT (◀)</li>
+        <li><span class="bomb">Bombs:</span> TAP to defuse! Don't swipe!</li>
+        <li>Score as many points as possible in 30 seconds</li>
+      </ul>
+      <button id="back-button">BACK TO MENU</button>
+    </div>
+    
+    <!-- GAME SCREEN (No background animation) -->
+    <div id="game-screen" class="screen hidden">
+      <div id="tap-message">TAP bombs to defuse them!</div>
+      <div id="stats">
+        <div id="score-display">Score: 0</div>
+        <div id="timer-display">Time: 30s</div>
+      </div>
+      <div id="card-stack">
+        <div id="stack-card-1" class="stack-card"></div>
+        <div id="stack-card-2" class="stack-card"></div>
+        <!-- Next card behind active -->
+        <div id="next-card" class="card"></div>
+        <div id="card" class="card"></div>
+      </div>
+      <div id="instruction"></div>
+    </div>
+    
+    <!-- GAME OVER SCREEN -->
+    <div id="game-over-screen" class="screen hidden">
+      <div class="background-animation" id="gameover-bg">
+        <div class="fruit-column">🍎🍌🍇🍏🍓🍒🍉🥑</div>
+        <div class="fruit-column even">🍌🍎🍇🍏🍒🍓🍉🥑</div>
+        <div class="fruit-column">🍇🍏🍓🍒🍉🥑🍎🍌</div>
+        <div class="fruit-column even">🍏🍒🍓🍇🍎🍉🥑🍌</div>
+        <div class="fruit-column">🍉🥑🍌🍎🍓🍒🍏🍇</div>
+        <div class="fruit-column even">🍓🍒🍏🍇🍉🥑🍎🍌</div>
+      </div>
+      <h2>Game Over!</h2>
+      <p id="final-score">Your score: 0</p>
+      <p id="high-score">High score: 0</p>
+      <button id="play-again-button">PLAY AGAIN</button>
+      <button id="menu-button">MAIN MENU</button>
+    </div>
+  </div>
+  
+  <script>
+    const FRUITS = {
+      red:    ['🍎', '🍓', '🍒'],
+      blue:   ['🫐', '🍇', '🍇'],
+      green:  ['🥑', '🍏', '🍉'],
+      yellow: ['🍌', '🥭', '🍋']
+    };
+    const COLORS = Object.keys(FRUITS);
+    const DIRECTIONS = {
+      red: 'up',
+      blue: 'down',
+      green: 'right',
+      yellow: 'left'
+    };
+    /* Use new arrow classes from your updated code */
+    const ARROWS = {
+      red: "arrow-up",
+      blue: "arrow-down",
+      green: "arrow-right",
+      yellow: "arrow-left"
+    };
+    const GAME_TIME = 30;
+    
+    let gameState = 'menu';
+    let score = 0;
+    let highScore = 0;
+    let timeLeft = GAME_TIME;
+    let currentCardData = null;
+    let nextCardData = null;
+    let timer = null;
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let isAnimating = false;
+    
+    const menuScreen       = document.getElementById('menu-screen');
+    const rulesScreen      = document.getElementById('rules-screen');
+    const gameScreen       = document.getElementById('game-screen');
+    const gameOverScreen   = document.getElementById('game-over-screen');
+    const playButton       = document.getElementById('play-button');
+    const rulesButton      = document.getElementById('rules-button');
+    const backButton       = document.getElementById('back-button');
+    const playAgainButton  = document.getElementById('play-again-button');
+    const menuButton       = document.getElementById('menu-button');
+    const cardElem         = document.getElementById('card');
+    const nextCardElem     = document.getElementById('next-card');
+    const scoreDisplay     = document.getElementById('score-display');
+    const timerDisplay     = document.getElementById('timer-display');
+    const finalScoreDisplay= document.getElementById('final-score');
+    const highScoreDisplay = document.getElementById('high-score');
+    const tapMessage       = document.getElementById('tap-message');
+    const instructionDisplay = document.getElementById('instruction');
+    
+    playButton.addEventListener('click', startGame);
+    rulesButton.addEventListener('click', () => showScreen('rules'));
+    backButton.addEventListener('click', () => showScreen('menu'));
+    playAgainButton.addEventListener('click', startGame);
+    menuButton.addEventListener('click', () => showScreen('menu'));
+    
+    cardElem.addEventListener('touchstart', (e) => { e.preventDefault(); handleTouchStart(e); });
+    cardElem.addEventListener('touchend', (e) => { e.preventDefault();
+      const touchEndX = e.changedTouches[0].clientX;
+      const touchEndY = e.changedTouches[0].clientY;
+      const dx = touchEndX - touchStartX;
+      const dy = touchEndY - touchStartY;
+      if (Math.abs(dx) < 20 && Math.abs(dy) < 20) {
+          handleTap();
+      } else {
+          handleTouchEnd(e);
+      }
+    });
+    cardElem.addEventListener('click', (e) => { e.preventDefault(); handleTap(); });
+    
+    function showScreen(screen) {
+      gameState = screen;
+      menuScreen.classList.add('hidden');
+      rulesScreen.classList.add('hidden');
+      gameScreen.classList.add('hidden');
+      gameOverScreen.classList.add('hidden');
+      switch(screen) {
+        case 'menu':     menuScreen.classList.remove('hidden'); break;
+        case 'rules':    rulesScreen.classList.remove('hidden'); break;
+        case 'playing':  gameScreen.classList.remove('hidden'); break;
+        case 'gameOver': gameOverScreen.classList.remove('hidden'); break;
+      }
+    }
+    
+    function startGame() {
+      score = 0;
+      timeLeft = GAME_TIME;
+      showScreen('playing');
+      updateScore();
+      updateTimer();
+      
+      document.getElementById('card-stack').style.visibility = "hidden";
+      tapMessage.classList.add('show');
+      setTimeout(() => {
+        tapMessage.classList.remove('show');
+        document.getElementById('card-stack').style.visibility = "visible";
+        currentCardData = generateCard(null);
+        nextCardData = generateCard(currentCardData);
+        displayCurrentCard();
+        displayNextCard();
+      }, 1000);
+      
+      if (timer) clearInterval(timer);
+      timer = setInterval(() => {
+        timeLeft--;
+        updateTimer();
+        if (timeLeft <= 0) {
+          endGame();
+        }
+      }, 1000);
+    }
+    
+    function endGame() {
+      if (timer) clearInterval(timer);
+      if (score > highScore) { highScore = score; }
+      finalScoreDisplay.textContent = `Your score: ${score}`;
+      highScoreDisplay.textContent = `High score: ${highScore}`;
+      showScreen('gameOver');
+    }
+    
+    function updateScore() {
+      scoreDisplay.textContent = `Score: ${score}`;
+    }
+    function updateTimer() {
+      timerDisplay.textContent = `Time: ${timeLeft}s`;
+    }
+    
+    function generateCard(previousCard) {
+      let isBomb = (!previousCard) ? false : (Math.random() < 0.2);
+      let color = '';
+      let fruit = '';
+      if (!isBomb) {
+        let availableColors = COLORS.slice();
+        if (previousCard && previousCard.type === 'fruit' && previousCard.color) {
+          availableColors = availableColors.filter(c => c !== previousCard.color);
+          if (availableColors.length === 0) availableColors = COLORS;
+        }
+        color = availableColors[Math.floor(Math.random() * availableColors.length)];
+        const fruitsForColor = FRUITS[color];
+        fruit = fruitsForColor[Math.floor(Math.random() * fruitsForColor.length)];
+      }
+      return { type: isBomb ? 'bomb' : 'fruit', color, fruit };
+    }
+    
+    function displayCurrentCard() {
+      displayCardContent(currentCardData, cardElem);
+      cardElem.style.opacity = 0;
+      setTimeout(() => { cardElem.style.opacity = 1; }, 50);
+    }
+    function displayNextCard() {
+      displayCardContent(nextCardData, nextCardElem);
+    }
+    
+    function displayCardContent(cardData, element) {
+      if (!cardData) return;
+      element.innerHTML = '';
+      element.className = 'card';
+      
+      if (cardData.type === 'bomb') {
+        element.classList.add('card-bomb');
+      } else {
+        element.classList.add(`card-${cardData.color}`);
+        const arrowEl = document.createElement('div');
+        arrowEl.className = 'card-arrow ' + ARROWS[cardData.color];
+        element.appendChild(arrowEl);
+      }
+      const cardContent = document.createElement('div');
+      cardContent.className = 'card-content';
+      cardContent.textContent = (cardData.type === 'bomb') ? '💣' : cardData.fruit;
+      element.appendChild(cardContent);
+    }
+    
+    function handleTouchStart(e) {
+      if (gameState !== 'playing' || isAnimating) return;
+      touchStartX = e.touches[0].clientX;
+      touchStartY = e.touches[0].clientY;
+    }
+    function handleTouchEnd(e) {
+      if (gameState !== 'playing' || isAnimating) return;
+      const touchEndX = e.changedTouches[0].clientX;
+      const touchEndY = e.changedTouches[0].clientY;
+      const dx = touchEndX - touchStartX;
+      const dy = touchEndY - touchStartY;
+      if (Math.abs(dx) < 20 && Math.abs(dy) < 20) return;
+      let direction;
+      if (Math.abs(dx) > Math.abs(dy)) {
+        direction = dx > 0 ? 'right' : 'left';
+      } else {
+        direction = dy > 0 ? 'down' : 'up';
+      }
+      if (currentCardData.type === 'bomb') {
+        handleCardAction('swipe', direction, true);
+      } else {
+        const correctDirection = DIRECTIONS[currentCardData.color];
+        if (direction === correctDirection) {
+          animateSwipe(direction, true, () => { handleCardAction('swipe', direction, true); });
+        } else {
+          animateSwipe(direction, false, () => { handleCardAction('swipe', direction, false); });
+        }
+      }
+    }
+    function animateSwipe(direction, isCorrect, callback) {
+      if (currentCardData && currentCardData.type !== 'bomb') {
+        isAnimating = true;
+        if (isCorrect) {
+          cardElem.classList.add(`swipe-${direction}`);
+          setTimeout(() => { isAnimating = false; if (callback) callback(); }, 250);
+        } else {
+          cardElem.classList.add(`wrong-swipe-${direction}`);
+          setTimeout(() => {
+            cardElem.classList.remove(`wrong-swipe-${direction}`);
+            isAnimating = false;
+            if (callback) callback();
+          }, 250);
+        }
+      }
+    }
+    function handleTap() {
+      if (gameState !== 'playing') return;
+      if (currentCardData.type === 'bomb') {
+        isAnimating = false;
+        handleCardAction('tap');
+      }
+    }
+    function handleCardAction(action, direction, isCorrect) {
+      if (!currentCardData || gameState !== 'playing') return;
+      if (currentCardData.type === 'bomb') {
+        if (action === 'tap') {
+          score++;
+          updateScore();
+          currentCardData = nextCardData;
+          nextCardData = generateCard(currentCardData);
+          cardElem.className = 'card';
+          displayCurrentCard();
+          displayNextCard();
+        } else {
+          endGame();
+        }
+      } else {
+        if (action === 'swipe') {
+          if (isCorrect) {
+            score++;
+            updateScore();
+            currentCardData = nextCardData;
+            nextCardData = generateCard(currentCardData);
+            cardElem.className = 'card';
+            displayCurrentCard();
+            displayNextCard();
+          } else {
+            // Wrong swipe: bounce back; no deck change.
+          }
+        }
+      }
+    }
+    
+    showScreen('menu');
+  </script>
+</body>
+</html>
